@@ -1,6 +1,6 @@
 <div align="center">
 
-# FiRe: Fine-grained Multimodal Reasoning for Enhanced Image Generation
+# 🔥 FiRe: Fine-grained Multimodal Reasoning for Enhanced Image Generation
 
 [![Paper](https://img.shields.io/badge/2604.13491-B31B1B?style=flat&logo=arXiv&logoColor=white)](https://arxiv.org/html/2604.13491v3)
 [![Project Page](https://img.shields.io/badge/🌐_Project_Page-2563EB?style=flat&logoColor=white)](https://ku-agi.github.io/FiRe/)
