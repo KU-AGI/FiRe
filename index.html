@@ -61,8 +61,8 @@
   <title>FiRe: Fine-grained Multimodal Reasoning for Enhanced Image Generation</title>
 
   <!-- Favicon and App Icons -->
-  <link rel="icon" type="image/x-icon" href="static/images/favicon.ico">
-  <link rel="apple-touch-icon" href="static/images/favicon.ico">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ctext%20y%3D%22.9em%22%20font-size%3D%2290%22%3E%F0%9F%94%A5%3C/text%3E%3C/svg%3E">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ctext%20y%3D%22.9em%22%20font-size%3D%2290%22%3E%F0%9F%94%A5%3C/text%3E%3C/svg%3E">
 
   <!-- Critical CSS - Load synchronously -->
   <link rel="stylesheet" href="static/css/bulma.min.css">
@@ -136,18 +136,22 @@
           <div class="column has-text-centered">
             <h1 class="title is-1 publication-title">FiRe: Fine-grained Multimodal Reasoning for Enhanced Image Generation</h1>
             <div class="is-size-5 publication-authors">
-              <span class="author-block">Yongjin Kim,</span>
-              <span class="author-block">Yoonjin Oh,</span>
-              <span class="author-block">Yerin Kim,</span>
-              <span class="author-block">Hyomin Kim,</span>
-              <span class="author-block">Jeeyoung Yun,</span>
-              <span class="author-block">Yujung Heo,</span>
-              <span class="author-block">Minjun Kim,</span>
-              <span class="author-block">Sungwoong Kim</span>
+              <span class="author-block">Yongjin Kim<sup>1</sup>,</span>
+              <span class="author-block">Yoonjin Oh<sup>1</sup>,</span>
+              <span class="author-block">Yerin Kim<sup>1</sup>,</span>
+              <span class="author-block">Hyomin Kim<sup>1</sup>,</span>
+              <span class="author-block">Jeeyoung Yun<sup>1</sup>,</span>
+              <span class="author-block">Yujung Heo<sup>2</sup>,</span>
+              <span class="author-block">Minjun Kim<sup>2</sup>,</span>
+              <span class="author-block">Sungwoong Kim<sup>1,*</sup></span>
             </div>
 
             <div class="is-size-5 publication-authors">
-              <span class="author-block">Korea University<br>NeurIPS 2026</span>
+              <span class="author-block"><sup>1</sup>Department of Artificial Intelligence, Korea University</span>
+              <span class="author-block"><sup>2</sup>KT Corporation</span>
+              <br>
+              <span class="author-block">Seoul, Republic of Korea &middot; NeurIPS 2026</span>
+              <span class="eql-cntrb"><small><br><sup>*</sup>Corresponding author</small></span>
             </div>
 
             <div class="column has-text-centered">
@@ -176,18 +180,19 @@
                   </a>
                 </span>
 
-                <span class="link-block">
+                <span class="link-block" style="display:inline-flex;flex-direction:column;align-items:center;">
                   <a href="https://huggingface.co/KU-AGI/FiRe-300Step" target="_blank"
                   class="external-link button is-normal is-rounded is-dark">
-                  <span class="icon"><i class="fas fa-cube"></i></span>
+                  <span class="icon">🤗</span>
                   <span>FiRe 300 Step</span>
                   </a>
+                  <span class="tag is-warning is-light" style="margin-top:4px;font-size:0.65rem;">NeurIPS main checkpoint</span>
                 </span>
 
                 <span class="link-block">
                   <a href="https://huggingface.co/KU-AGI/FiRe-2500Step" target="_blank"
                   class="external-link button is-normal is-rounded is-dark">
-                  <span class="icon"><i class="fas fa-cube"></i></span>
+                  <span class="icon">🤗</span>
                   <span>FiRe 2500 Step</span>
                   </a>
                 </span>
@@ -195,7 +200,7 @@
                 <span class="link-block">
                   <a href="https://huggingface.co/KU-AGI/FiRe-SFT" target="_blank"
                   class="external-link button is-normal is-rounded is-dark">
-                  <span class="icon"><i class="fas fa-cube"></i></span>
+                  <span class="icon">🤗</span>
                   <span>FiRe SFT</span>
                   </a>
                 </span>
@@ -245,7 +250,7 @@
       <h3 class="title is-4">FiRe: Fine-grained Reasoning &amp; Self-Correction</h3>
       <div class="content has-text-justified">
         <p>
-          FiRe summarizes the prompt into verifiable visual details, decomposes them into atomic semantic tuples (objects, attributes, counts, spatial relations), verifies each tuple against the generated image with tuple-level VQA, and turns any unsatisfied tuple into an explicit correction instruction — which is then applied through localized image editing that fixes only the mismatched regions while preserving everything already correct. This generate&ndash;verify&ndash;correct cycle repeats until the image satisfies the prompt.
+          FiRe summarizes the prompt into verifiable visual details, decomposes them into atomic semantic tuples (objects, attributes, counts, spatial relations), verifies each tuple against the generated image with tuple-level VQA, and turns any unsatisfied tuple into an explicit correction instruction — which is then applied through localized image editing that fixes only the mismatched regions while preserving everything already correct.
         </p>
       </div>
 
@@ -283,44 +288,6 @@
     </div>
   </section>
   <!-- End results -->
-
-  <!-- Checkpoints -->
-  <section class="section">
-    <div class="container is-max-desktop">
-      <h2 class="title is-3 has-text-centered">Checkpoints</h2>
-      <div class="content has-text-justified">
-        <p>
-          <b>FiRe 300 Step</b> is the main checkpoint used in the NeurIPS 2026 paper. <b>FiRe 2500 Step</b> is a longer-trained variant, and <b>FiRe SFT</b> is the supervised fine-tuning checkpoint before FiRe-GRPO training.
-        </p>
-      </div>
-      <div class="column has-text-centered">
-        <div class="publication-links">
-          <span class="link-block">
-            <a href="https://huggingface.co/KU-AGI/FiRe-300Step" target="_blank"
-            class="external-link button is-normal is-rounded is-dark">
-            <span class="icon"><i class="fas fa-cube"></i></span>
-            <span>FiRe 300 Step</span>
-            </a>
-          </span>
-          <span class="link-block">
-            <a href="https://huggingface.co/KU-AGI/FiRe-2500Step" target="_blank"
-            class="external-link button is-normal is-rounded is-dark">
-            <span class="icon"><i class="fas fa-cube"></i></span>
-            <span>FiRe 2500 Step</span>
-            </a>
-          </span>
-          <span class="link-block">
-            <a href="https://huggingface.co/KU-AGI/FiRe-SFT" target="_blank"
-            class="external-link button is-normal is-rounded is-dark">
-            <span class="icon"><i class="fas fa-cube"></i></span>
-            <span>FiRe SFT</span>
-            </a>
-          </span>
-        </div>
-      </div>
-    </div>
-  </section>
-  <!-- End checkpoints -->
 
   <!-- BibTeX citation -->
   <section class="section" id="BibTeX">
