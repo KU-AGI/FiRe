@@ -2,7 +2,7 @@
 
 # 🔥 FiRe: Fine-grained Multimodal Reasoning for Enhanced Image Generation
 
-<a href="https://arxiv.org/html/2604.13491v3" target="_blank"><img src="https://img.shields.io/badge/2604.13491-B31B1B?style=flat&logo=arXiv&logoColor=white" alt="Paper"></a>
+<a href="https://arxiv.org/pdf/2604.13491v3" target="_blank"><img src="https://img.shields.io/badge/arXiv-B31B1B?style=flat&logo=arXiv&logoColor=white" alt="Paper"></a>
 <a href="https://ku-agi.github.io/FiRe/" target="_blank"><img src="https://img.shields.io/badge/🌐_Project_Page-2563EB?style=flat&logoColor=white" alt="Project Page"></a>
 <a href="https://github.com/KU-AGI/FiRe" target="_blank"><img src="https://img.shields.io/badge/Code-181717?style=flat&logo=github&logoColor=white" alt="Code"></a>
 <a href="https://huggingface.co/KU-AGI/FiRe-300Step" target="_blank"><img src="https://img.shields.io/badge/FiRe_300_Step-FFD21E?style=flat&logo=huggingface&logoColor=white" alt="FiRe_300Step"></a>
