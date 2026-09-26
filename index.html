@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Primary Meta Tags -->
+  <meta name="title" content="FiRe: Fine-grained Multimodal Reasoning for Enhanced Image Generation">
+  <meta name="description" content="FiRe decomposes prompts into fine-grained visual requirements, self-verifies them via VQA, and locally corrects images, trained with the step-level FiRe-GRPO.">
+  <meta name="keywords" content="text-to-image generation, multimodal reasoning, unified MLLM, self-correction, reinforcement learning, GRPO, image generation, NeurIPS 2026">
+  <meta name="author" content="Yongjin Kim, Yoonjin Oh, Yerin Kim, Hyomin Kim, Jeeyoung Yun, Yujung Heo, Minjun Kim, Sungwoong Kim">
+  <meta name="robots" content="index, follow">
+  <meta name="language" content="English">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="KU-AGI">
+  <meta property="og:title" content="FiRe: Fine-grained Multimodal Reasoning for Enhanced Image Generation">
+  <meta property="og:description" content="FiRe decomposes prompts into fine-grained visual requirements, self-verifies them via VQA, and locally corrects images, trained with the step-level FiRe-GRPO.">
+  <meta property="og:url" content="https://ku-agi.github.io/FiRe/">
+  <meta property="og:image" content="https://ku-agi.github.io/FiRe/static/images/FiRe_Inference.png">
+  <meta property="og:image:alt" content="FiRe - Research Preview">
+  <meta property="article:published_time" content="2026-01-01T00:00:00.000Z">
+  <meta property="article:section" content="Research">
+  <meta property="article:tag" content="text-to-image generation">
+  <meta property="article:tag" content="multimodal reasoning">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="FiRe: Fine-grained Multimodal Reasoning for Enhanced Image Generation">
+  <meta name="twitter:description" content="FiRe decomposes prompts into fine-grained visual requirements, self-verifies them via VQA, and locally corrects images, trained with the step-level FiRe-GRPO.">
+  <meta name="twitter:image" content="https://ku-agi.github.io/FiRe/static/images/FiRe_Inference.png">
+  <meta name="twitter:image:alt" content="FiRe - Research Preview">
+
+  <!-- Academic/Research Specific -->
+  <meta name="citation_title" content="FiRe: Fine-grained Multimodal Reasoning for Enhanced Image Generation">
+  <meta name="citation_author" content="Kim, Yongjin">
+  <meta name="citation_author" content="Oh, Yoonjin">
+  <meta name="citation_author" content="Kim, Yerin">
+  <meta name="citation_author" content="Kim, Hyomin">
+  <meta name="citation_author" content="Yun, Jeeyoung">
+  <meta name="citation_author" content="Heo, Yujung">
+  <meta name="citation_author" content="Kim, Minjun">
+  <meta name="citation_author" content="Kim, Sungwoong">
+  <meta name="citation_publication_date" content="2026">
+  <meta name="citation_conference_title" content="NeurIPS 2026">
+  <meta name="citation_pdf_url" content="https://arxiv.org/pdf/2604.13491">
+
+  <!-- Additional SEO -->
+  <meta name="theme-color" content="#2563eb">
+  <meta name="msapplication-TileColor" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+  <!-- Preconnect for performance -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://ajax.googleapis.com">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+
+  <title>FiRe: Fine-grained Multimodal Reasoning for Enhanced Image Generation</title>
+
+  <!-- Favicon and App Icons -->
+  <link rel="icon" type="image/x-icon" href="static/images/favicon.ico">
+  <link rel="apple-touch-icon" href="static/images/favicon.ico">
+
+  <!-- Critical CSS - Load synchronously -->
+  <link rel="stylesheet" href="static/css/bulma.min.css">
+  <link rel="stylesheet" href="static/css/index.css">
+
+  <!-- Non-critical CSS - Load asynchronously -->
+  <link rel="preload" href="static/css/bulma-carousel.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="static/css/bulma-slider.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="static/css/fontawesome.all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+
+  <noscript>
+    <link rel="stylesheet" href="static/css/bulma-carousel.min.css">
+    <link rel="stylesheet" href="static/css/bulma-slider.min.css">
+    <link rel="stylesheet" href="static/css/fontawesome.all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  </noscript>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <script defer src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="static/js/fontawesome.all.min.js"></script>
+  <script defer src="static/js/bulma-carousel.min.js"></script>
+  <script defer src="static/js/bulma-slider.min.js"></script>
+  <script defer src="static/js/index.js"></script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ScholarlyArticle",
+    "headline": "FiRe: Fine-grained Multimodal Reasoning for Enhanced Image Generation",
+    "description": "FiRe decomposes prompts into fine-grained visual requirements, self-verifies them via VQA, and locally corrects images, trained with the step-level FiRe-GRPO.",
+    "author": [
+      {"@type": "Person", "name": "Yongjin Kim"},
+      {"@type": "Person", "name": "Yoonjin Oh"},
+      {"@type": "Person", "name": "Yerin Kim"},
+      {"@type": "Person", "name": "Hyomin Kim"},
+      {"@type": "Person", "name": "Jeeyoung Yun"},
+      {"@type": "Person", "name": "Yujung Heo"},
+      {"@type": "Person", "name": "Minjun Kim"},
+      {"@type": "Person", "name": "Sungwoong Kim"}
+    ],
+    "datePublished": "2026-01-01",
+    "publisher": {
+      "@type": "Organization",
+      "name": "NeurIPS 2026"
+    },
+    "url": "https://ku-agi.github.io/FiRe/",
+    "image": "https://ku-agi.github.io/FiRe/static/images/FiRe_Inference.png",
+    "keywords": ["text-to-image generation", "multimodal reasoning", "unified MLLM", "reinforcement learning"],
+    "isAccessibleForFree": true,
+    "mainEntity": {
+      "@type": "WebPage",
+      "@id": "https://ku-agi.github.io/FiRe/"
+    }
+  }
+  </script>
+</head>
+<body>
+
+  <!-- Scroll to Top Button -->
+  <button class="scroll-to-top" onclick="scrollToTop()" title="Scroll to top" aria-label="Scroll to top">
+    <i class="fas fa-chevron-up"></i>
+  </button>
+
+  <main id="main-content">
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-max-desktop">
+        <div class="columns is-centered">
+          <div class="column has-text-centered">
+            <h1 class="title is-1 publication-title">FiRe: Fine-grained Multimodal Reasoning for Enhanced Image Generation</h1>
+            <div class="is-size-5 publication-authors">
+              <span class="author-block">Yongjin Kim,</span>
+              <span class="author-block">Yoonjin Oh,</span>
+              <span class="author-block">Yerin Kim,</span>
+              <span class="author-block">Hyomin Kim,</span>
+              <span class="author-block">Jeeyoung Yun,</span>
+              <span class="author-block">Yujung Heo,</span>
+              <span class="author-block">Minjun Kim,</span>
+              <span class="author-block">Sungwoong Kim</span>
+            </div>
+
+            <div class="is-size-5 publication-authors">
+              <span class="author-block">Korea University<br>NeurIPS 2026</span>
+            </div>
+
+            <div class="column has-text-centered">
+              <div class="publication-links">
+                <span class="link-block">
+                  <a href="https://arxiv.org/pdf/2604.13491" target="_blank"
+                  class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fas fa-file-pdf"></i></span>
+                  <span>Paper</span>
+                  </a>
+                </span>
+
+                <span class="link-block">
+                  <a href="https://github.com/KU-AGI/FiRe" target="_blank"
+                  class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fab fa-github"></i></span>
+                  <span>Code</span>
+                  </a>
+                </span>
+
+                <span class="link-block">
+                  <a href="https://arxiv.org/abs/2604.13491" target="_blank"
+                  class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="ai ai-arxiv"></i></span>
+                  <span>arXiv</span>
+                  </a>
+                </span>
+
+                <span class="link-block">
+                  <a href="https://huggingface.co/KU-AGI/FiRe-300Step" target="_blank"
+                  class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fas fa-cube"></i></span>
+                  <span>FiRe 300 Step</span>
+                  </a>
+                </span>
+
+                <span class="link-block">
+                  <a href="https://huggingface.co/KU-AGI/FiRe-2500Step" target="_blank"
+                  class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fas fa-cube"></i></span>
+                  <span>FiRe 2500 Step</span>
+                  </a>
+                </span>
+
+                <span class="link-block">
+                  <a href="https://huggingface.co/KU-AGI/FiRe-SFT" target="_blank"
+                  class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fas fa-cube"></i></span>
+                  <span>FiRe SFT</span>
+                  </a>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Teaser -->
+  <section class="hero teaser">
+    <div class="container is-max-desktop">
+      <div class="hero-body">
+        <img src="static/images/FiRe_Inference.png" alt="FiRe inference pipeline">
+        <h2 class="subtitle has-text-centered">
+          FiRe decomposes a prompt into fine-grained visual requirements, verifies each one against the generated image, and locally corrects only the parts that are wrong.
+        </h2>
+      </div>
+    </div>
+  </section>
+  <!-- End teaser -->
+
+  <!-- Paper abstract -->
+  <section class="section hero is-light">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-four-fifths">
+          <h2 class="title is-3">Abstract</h2>
+          <div class="content has-text-justified">
+            <p>
+              With the rapid progress of Multimodal Large Language Models (MLLMs), unified MLLMs that jointly perform image understanding and generation have advanced significantly. However, despite the inherent reasoning capabilities of unified MLLMs for self-reflection and self-refinement, their use in text-to-image generation remains largely underexplored. Meanwhile, existing multimodal reasoning-based image generation methods mostly rely on prompt augmentation or holistic image-text alignment judgments, without fine-grained reflection and refinement of detailed prompt attributes, leading to limited fine-grained control. To address this limitation, we propose <b>FiRe</b>, a Fine-grained Multimodal Reasoning method for enhanced image generation by MLLM. In specific, FiRe performs a fine-grained multi-step reasoning by first decomposing the prompt into key visual requirements and then self-judging their satisfaction in the generated image, followed by localized refinement according to self-generated precise feedback. In addition, to further strengthen the MLLM's multimodal reasoning ability, we introduce <b>FiRe-GRPO</b>, a reinforcement learning method tailored to FiRe. Since standard Group Relative Policy Optimization (GRPO) suffers from sparse, outcome-based rewards in multi-step reasoning, we formulate our reasoning process as a step-level decision-making problem, design step-specific rewards, and compute step-level advantages for granular credit assignment within GRPO. Extensive experiments demonstrate that FiRe consistently outperforms competitive text-to-image baselines, including existing reasoning-based methods, with particularly substantial gains on compositional text-to-image benchmarks.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- End paper abstract -->
+
+  <!-- Method -->
+  <section class="section">
+    <div class="container is-max-desktop">
+      <h2 class="title is-3 has-text-centered">Method</h2>
+
+      <h3 class="title is-4">FiRe: Fine-grained Reasoning &amp; Self-Correction</h3>
+      <div class="content has-text-justified">
+        <p>
+          FiRe summarizes the prompt into verifiable visual details, decomposes them into atomic semantic tuples (objects, attributes, counts, spatial relations), verifies each tuple against the generated image with tuple-level VQA, and turns any unsatisfied tuple into an explicit correction instruction — which is then applied through localized image editing that fixes only the mismatched regions while preserving everything already correct. This generate&ndash;verify&ndash;correct cycle repeats until the image satisfies the prompt.
+        </p>
+      </div>
+
+      <h3 class="title is-4">FiRe-GRPO: Step-Level Reinforcement Learning</h3>
+      <div class="content has-text-justified">
+        <p>
+          Standard GRPO assigns a single, trajectory-level reward to the whole reasoning-and-generation rollout, so every step — whether it was the tuple decomposition, the VQA verification, or the final edit — gets the same credit regardless of which step actually caused the outcome, making it hard to tell which reasoning step to reinforce and which to discourage. FiRe-GRPO instead assigns step-specific rewards and estimates the advantage of each step separately within the same trajectory, then optimizes the policy with GRPO — enabling precise, step-level credit assignment and yielding better fine-grained image-prompt alignment.
+        </p>
+      </div>
+      <img src="static/images/FiRe_GRPO.png" alt="FiRe-GRPO training pipeline">
+    </div>
+  </section>
+  <!-- End method -->
+
+  <!-- Results -->
+  <section class="section hero is-light">
+    <div class="container is-max-desktop">
+      <h2 class="title is-3 has-text-centered">Results</h2>
+
+      <h3 class="title is-4">Quantitative Results</h3>
+      <div class="content has-text-centered">
+        <img src="static/images/FiRe_Table.png" alt="FiRe benchmark results table">
+        <p class="has-text-justified">
+          FiRe achieves state-of-the-art results on GenEval, GenEval++, and DPGBench, consistently outperforming both unified MLLM and diffusion-based baselines, with the largest gains on compositional tasks such as color, count, and spatial relations.
+        </p>
+      </div>
+
+      <h3 class="title is-4">Qualitative Results</h3>
+      <div class="content has-text-centered">
+        <img src="static/images/FiRe_Qualitative.png" alt="FiRe qualitative results">
+        <p class="has-text-justified">
+          Across iterative self-correction steps, FiRe progressively fixes fine-grained prompt-image mismatches — such as missing objects, incorrect counts, and wrong attributes — while leaving already-correct regions of the image untouched.
+        </p>
+      </div>
+    </div>
+  </section>
+  <!-- End results -->
+
+  <!-- Checkpoints -->
+  <section class="section">
+    <div class="container is-max-desktop">
+      <h2 class="title is-3 has-text-centered">Checkpoints</h2>
+      <div class="content has-text-justified">
+        <p>
+          <b>FiRe 300 Step</b> is the main checkpoint used in the NeurIPS 2026 paper. <b>FiRe 2500 Step</b> is a longer-trained variant, and <b>FiRe SFT</b> is the supervised fine-tuning checkpoint before FiRe-GRPO training.
+        </p>
+      </div>
+      <div class="column has-text-centered">
+        <div class="publication-links">
+          <span class="link-block">
+            <a href="https://huggingface.co/KU-AGI/FiRe-300Step" target="_blank"
+            class="external-link button is-normal is-rounded is-dark">
+            <span class="icon"><i class="fas fa-cube"></i></span>
+            <span>FiRe 300 Step</span>
+            </a>
+          </span>
+          <span class="link-block">
+            <a href="https://huggingface.co/KU-AGI/FiRe-2500Step" target="_blank"
+            class="external-link button is-normal is-rounded is-dark">
+            <span class="icon"><i class="fas fa-cube"></i></span>
+            <span>FiRe 2500 Step</span>
+            </a>
+          </span>
+          <span class="link-block">
+            <a href="https://huggingface.co/KU-AGI/FiRe-SFT" target="_blank"
+            class="external-link button is-normal is-rounded is-dark">
+            <span class="icon"><i class="fas fa-cube"></i></span>
+            <span>FiRe SFT</span>
+            </a>
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- End checkpoints -->
+
+  <!-- BibTeX citation -->
+  <section class="section" id="BibTeX">
+    <div class="container is-max-desktop content">
+      <div class="bibtex-header">
+        <h2 class="title">BibTeX</h2>
+        <button class="copy-bibtex-btn" onclick="copyBibTeX()" title="Copy BibTeX to clipboard">
+          <i class="fas fa-copy"></i>
+          <span class="copy-text">Copy</span>
+        </button>
+      </div>
+      <pre id="bibtex-code"><code>@article{kim2026fire,
+  title={FiRe: Fine-grained Multimodal Reasoning for Enhanced Image Generation},
+  author={Kim, Yongjin and Oh, Yoonjin and Kim, Yerin and Kim, Hyomin and Yun, Jeeyoung and Heo, Yujung and Kim, Minjun and Kim, Sungwoong},
+  journal={arXiv preprint arXiv:2604.13491},
+  year={2026}
+}</code></pre>
+    </div>
+  </section>
+  <!-- End BibTeX citation -->
+
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="columns is-centered">
+        <div class="column is-8">
+          <div class="content">
+            <p>
+              This page was built using the <a href="https://github.com/eliahuhorwitz/Academic-project-page-template" target="_blank">Academic Project Page Template</a> which was adopted from the <a href="https://nerfies.github.io" target="_blank">Nerfies</a> project page.
+              You are free to borrow the source code of this website, we just ask that you link back to this page in the footer. <br> This website is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/" target="_blank">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
