@@ -2,12 +2,12 @@
 
 # 🔥 FiRe: Fine-grained Multimodal Reasoning for Enhanced Image Generation
 
-[![Paper](https://img.shields.io/badge/2604.13491-B31B1B?style=flat&logo=arXiv&logoColor=white)](https://arxiv.org/html/2604.13491v3)
-[![Project Page](https://img.shields.io/badge/🌐_Project_Page-2563EB?style=flat&logoColor=white)](https://ku-agi.github.io/FiRe/)
-[![Code](https://img.shields.io/badge/Code-181717?style=flat&logo=github&logoColor=white)](https://github.com/KU-AGI/FiRe)
-[![FiRe_300Step](https://img.shields.io/badge/FiRe_300_Step-FFD21E?style=flat&logo=huggingface&logoColor=white)](https://huggingface.co/KU-AGI/FiRe-300Step)
-[![FiRe_2500Step](https://img.shields.io/badge/FiRe_2500_Step-FFD21E?style=flat&logo=huggingface&logoColor=white)](https://huggingface.co/KU-AGI/FiRe-2500Step)
-[![FiRe_SFT](https://img.shields.io/badge/FiRe_SFT-FFD21E?style=flat&logo=huggingface&logoColor=white)](https://huggingface.co/KU-AGI/FiRe-SFT)
+<a href="https://arxiv.org/html/2604.13491v3" target="_blank"><img src="https://img.shields.io/badge/2604.13491-B31B1B?style=flat&logo=arXiv&logoColor=white" alt="Paper"></a>
+<a href="https://ku-agi.github.io/FiRe/" target="_blank"><img src="https://img.shields.io/badge/🌐_Project_Page-2563EB?style=flat&logoColor=white" alt="Project Page"></a>
+<a href="https://github.com/KU-AGI/FiRe" target="_blank"><img src="https://img.shields.io/badge/Code-181717?style=flat&logo=github&logoColor=white" alt="Code"></a>
+<a href="https://huggingface.co/KU-AGI/FiRe-300Step" target="_blank"><img src="https://img.shields.io/badge/FiRe_300_Step-FFD21E?style=flat&logo=huggingface&logoColor=white" alt="FiRe_300Step"></a>
+<a href="https://huggingface.co/KU-AGI/FiRe-2500Step" target="_blank"><img src="https://img.shields.io/badge/FiRe_2500_Step-FFD21E?style=flat&logo=huggingface&logoColor=white" alt="FiRe_2500Step"></a>
+<a href="https://huggingface.co/KU-AGI/FiRe-SFT" target="_blank"><img src="https://img.shields.io/badge/FiRe_SFT-FFD21E?style=flat&logo=huggingface&logoColor=white" alt="FiRe_SFT"></a>
 
 **Official implementation of FiRe: Fine-grained Multimodal Reasoning for Enhanced Image Generation**
 
