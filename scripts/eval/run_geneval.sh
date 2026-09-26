@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ── User configuration ────────────────────────────────────────────────────
-CKPT_PATH="./checkpoints/FiMR"
+CKPT_PATH="./checkpoints/FiRe-300Step"
 SAVE_PATH="./outputs"
 EXP_NAME="fimr"
 WORLD_SIZE=8

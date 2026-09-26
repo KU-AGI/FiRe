@@ -1,14 +1,27 @@
 <div align="center">
 
-# Enhanced Text-to-Image Generation by Fine-grained Multimodal Reasoning
+# FiRe: Fine-grained Multimodal Reasoning for Enhanced Image Generation
 
-[![Paper](https://img.shields.io/badge/2604.13491-B31B1B?style=flat&logo=arXiv&logoColor=white)](https://arxiv.org/abs/2604.13491)
-[![Code](https://img.shields.io/badge/Code-181717?style=flat&logo=github&logoColor=white)](https://github.com/KU-AGI/FiMR)
-[![Model](https://img.shields.io/badge/Checkpoint-FFD21E?style=flat&logo=huggingface&logoColor=white)](https://huggingface.co/KU-AGI/FiMR)
+[![Paper](https://img.shields.io/badge/2604.13491-B31B1B?style=flat&logo=arXiv&logoColor=white)](https://arxiv.org/html/2604.13491v3)
+[![Code](https://img.shields.io/badge/Code-181717?style=flat&logo=github&logoColor=white)](https://github.com/KU-AGI/FiRe)
+[![FiRe_300Step](https://img.shields.io/badge/FiRe_300_Step-FFD21E?style=flat&logo=huggingface&logoColor=white)](https://huggingface.co/KU-AGI/FiRe-300Step)
+[![FiRe_2500Step](https://img.shields.io/badge/FiRe_2500_Step-FFD21E?style=flat&logo=huggingface&logoColor=white)](https://huggingface.co/KU-AGI/FiRe-2500Step)
+[![FiRe_SFT](https://img.shields.io/badge/FiRe_SFT-FFD21E?style=flat&logo=huggingface&logoColor=white)](https://huggingface.co/KU-AGI/FiRe-SFT)
 
-**Official implementation of Enhanced Text-to-Image Generation by Fine-grained Multimodal Reasoning**
+**Official implementation of FiRe: Fine-grained Multimodal Reasoning for Enhanced Image Generation**
 
-![framework](images/FiMR.png)
+🔥 FiRe has been accepted to **NeurIPS 2026**! 🔥
+
+</div>
+
+<div align="center">
+
+### FiRe Inference
+<img src="images/FiRe_Inference.png" alt="FiRe Inference Pipeline" width="90%">
+
+### FiRe-GRPO
+<img src="images/FiRe_GRPO.png" alt="FiRe GRPO Training" width="90%">
+
 </div>
 
 # 📋 TODO
@@ -18,7 +31,24 @@
 - [ ] Release training code
 
 # 📌 Paper Overview
-**FiMR** enhances text-to-image generation in unified MLLMs through fine-grained multimodal reasoning. By decomposing prompts into semantic units and verifying them with VQA, FiMR generates explicit feedback for targeted refinement, leading to better image-prompt alignment and stronger performance than prior reasoning-based baselines.
+Unified MLLMs can both understand and generate images, but their reasoning ability is rarely used to improve generation itself. Existing reasoning-based text-to-image methods rely on prompt augmentation or holistic image–text judgments, so they often miss fine-grained details such as attributes, counts, and spatial relations.
+
+**FiRe** breaks the prompt into verifiable visual requirements, checks each one against the generated image, and corrects only the parts that are wrong. Concretely, it summarizes the prompt into verifiable visual details, decomposes them into atomic semantic tuples (objects, attributes, counts, spatial relations), verifies each tuple against the image with tuple-level VQA, and turns any unsatisfied tuple into an explicit correction instruction — which is then applied through localized image editing that fixes only the mismatched regions while preserving everything already correct.
+
+We also propose **FiRe-GRPO**, a step-level reinforcement learning method that gives each reasoning step its own reward. Standard GRPO assigns a single, trajectory-level reward to the whole reasoning-and-generation rollout, so every step — whether it was the tuple decomposition, the VQA verification, or the final edit — gets the same credit regardless of which step actually caused the outcome, making it hard to tell which reasoning step to reinforce and which to discourage. FiRe-GRPO instead assigns step-specific rewards and estimates the advantage of each step separately within the same trajectory, then optimizes the policy with GRPO — enabling precise, step-level credit assignment and yielding better fine-grained image-prompt alignment.
+
+# 📊 Results
+
+### Quantitative Results
+<div align="center">
+<img src="images/FiRe_Table.png" alt="FiRe Benchmark Results" width="90%">
+</div>
+
+### Qualitative Results
+<div align="center">
+<img src="images/FiRe_Qualitative.png" alt="FiRe Qualitative Results" width="90%">
+</div>
+
 
 # 🐍 Environments
 
@@ -63,8 +93,10 @@ dpgbench: /path/to/ELLA/dpg_bench/prompts
 
 ## 2. Download Model Checkpoint
 
+**FiRe_300Step** is the main checkpoint used in the NeurIPS 2026 paper. `FiRe_2500Step` is a longer-trained variant, and `FiRe_SFT` is the supervised fine-tuning checkpoint before FiRe-GRPO training.
+
 ```bash
-huggingface-cli download KU-AGI/FiMR --local-dir ./checkpoints/FiMR
+hf download KU-AGI/FiRe-300Step --local-dir ./checkpoints/FiRe-300Step
 ```
 
 ## 3. Run Inference
@@ -102,12 +134,9 @@ We sincerely thank the authors of [Janus-Series](https://github.com/deepseek-ai/
 
 # 📝 Citation
 ```bibtex
-@misc{kim2026enhancedtexttoimagegenerationfinegrained,
-      title={Enhanced Text-to-Image Generation by Fine-grained Multimodal Reasoning}, 
-      author={Yongjin Kim and Yoonjin Oh and Yerin Kim and Hyomin Kim and Jeeyoung Yun and Yujung Heo and Minjun Kim and Sungwoong Kim},
-      year={2026},
-      eprint={2604.13491},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV},
-      url={https://arxiv.org/abs/2604.13491}, 
+@article{kim2026fire,
+  title={FiRe: Fine-grained Multimodal Reasoning for Enhanced Image Generation},
+  author={Kim, Yongjin and Oh, Yoonjin and Kim, Yerin and Kim, Hyomin and Yun, Jeeyoung and Heo, Yujung and Kim, Minjun and Kim, Sungwoong},
+  journal={arXiv preprint arXiv:2604.13491},
+  year={2026}
 }
