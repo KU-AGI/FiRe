@@ -54,8 +54,8 @@ We also propose **FiRe-GRPO**, a step-level reinforcement learning method that g
 # 🐍 Environments
 
 ```bash
-conda create -n fimr python=3.10 -y
-conda activate fimr
+conda create -n fire python=3.10 -y
+conda activate fire
 pip install -r requirements.txt
 ```
 

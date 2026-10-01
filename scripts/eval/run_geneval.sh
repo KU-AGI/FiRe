@@ -3,7 +3,7 @@
 # ── User configuration ────────────────────────────────────────────────────
 CKPT_PATH="./checkpoints/FiRe-300Step"
 SAVE_PATH="./outputs"
-EXP_NAME="fimr"
+EXP_NAME="fire"
 WORLD_SIZE=8
 BATCH_SIZE=4
 # ─────────────────────────────────────────────────────────────────────────
