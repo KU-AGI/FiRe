@@ -45,6 +45,14 @@ We also propose **FiRe-GRPO**, a step-level reinforcement learning method that g
 <img src="images/FiRe_Table.png" alt="FiRe Benchmark Results" width="90%">
 </div>
 
+Results above are reported using the **FiRe 300 Step** checkpoint, the main checkpoint used in the NeurIPS 2026 paper.
+
+<div align="center">
+<img src="images/FiRe_Table_Extend.png" alt="FiRe Extended Benchmark Results" width="90%">
+</div>
+
+Extended comparison including **FiRe 2500 Step**, a longer-trained checkpoint released after the NeurIPS 2026 paper.
+
 ### Qualitative Results
 <div align="center">
 <img src="images/FiRe_Qualitative.png" alt="FiRe Qualitative Results" width="90%">
