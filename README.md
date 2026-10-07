@@ -99,7 +99,7 @@ dpgbench: /path/to/ELLA/dpg_bench/prompts
 **FiRe_300Step** is trained for 300 steps with FiRe-GRPO. `FiRe_2500Step` continues the same training to 2,500 steps, and `FiRe_SFT` is the supervised fine-tuning checkpoint before FiRe-GRPO training.
 
 ```bash
-hf download KU-AGI/FiRe-300Step --local-dir ./checkpoints/FiRe-300Step
+hf download KU-AGI/FiRe-2500Step --local-dir ./checkpoints/FiRe-2500Step
 ```
 
 ## 3. Run Inference

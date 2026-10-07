@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ── User configuration ────────────────────────────────────────────────────
-CKPT_PATH="./checkpoints/FiRe-300Step"
+CKPT_PATH="./checkpoints/FiRe-2500Step"
 SAVE_PATH="./outputs"
 EXP_NAME="fire"
 WORLD_SIZE=8
