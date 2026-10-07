@@ -45,13 +45,7 @@ We also propose **FiRe-GRPO**, a step-level reinforcement learning method that g
 <img src="images/FiRe_Table.png" alt="FiRe Benchmark Results" width="90%">
 </div>
 
-Results above are reported using the **FiRe 300 Step** checkpoint, the main checkpoint used in the NeurIPS 2026 paper.
-
-<div align="center">
-<img src="images/FiRe_Table_Extend.png" alt="FiRe Extended Benchmark Results" width="90%">
-</div>
-
-Extended comparison including **FiRe 2500 Step**, a longer-trained checkpoint released after the NeurIPS 2026 paper.
+**FiRe** is the checkpoint used in the NeurIPS 2026 paper, trained for 300 steps. We additionally report **FiRe-2500 Steps**, obtained by continuing the same FiRe-GRPO training to 2,500 steps.
 
 ### Qualitative Results
 <div align="center">
@@ -102,7 +96,7 @@ dpgbench: /path/to/ELLA/dpg_bench/prompts
 
 ## 2. Download Model Checkpoint
 
-**FiRe_300Step** is the main checkpoint used in the NeurIPS 2026 paper. `FiRe_2500Step` is a longer-trained variant, and `FiRe_SFT` is the supervised fine-tuning checkpoint before FiRe-GRPO training.
+**FiRe_300Step** is the checkpoint used in the NeurIPS 2026 paper. `FiRe_2500Step` continues the same FiRe-GRPO training to 2,500 steps, and `FiRe_SFT` is the supervised fine-tuning checkpoint before FiRe-GRPO training.
 
 ```bash
 hf download KU-AGI/FiRe-300Step --local-dir ./checkpoints/FiRe-300Step
