@@ -8,7 +8,7 @@ from datasets import load_dataset
 
 import pytorch_lightning as pl
 
-from src.dataset.eval_dataset import GenEval, T2ICompBench, DPGEval, TIIFEval
+from src.dataset.eval_dataset import GenEval, DPGEval
 
 
 class EvalDataModule(pl.LightningDataModule):
@@ -24,23 +24,18 @@ class EvalDataModule(pl.LightningDataModule):
         if path is None:
             raise ValueError(f"Invalid task name: {task}")
 
-        if task == "geneval":
+        if task in ["geneval", "geneval_pp"]:
             self.dataset = GenEval(data_path=path,
                                   s_idx=self.config.dataset.s_idx,
                                   e_idx=self.config.dataset.e_idx)
 
-        elif task == "t2icompbench":
-            self.dataset = T2ICompBench(data_dir=path,
-                                       category_list=self.config.dataset.category,
-                                       split=self.config.dataset.split,
-                                       s_idx=self.config.dataset.s_idx,
-                                       e_idx=self.config.dataset.e_idx)
         elif task == "dpgbench":
             self.dataset = DPGEval(file_path=path,
                                    s_idx=self.config.dataset.s_idx,
                                    e_idx=self.config.dataset.e_idx)
 
         elif task == "tiif": 
+            from src.dataset.eval_dataset import TIIFEval
             self.dataset = TIIFEval(data_dir=path, # directory (not file)
                                    s_idx=self.config.dataset.s_idx,
                                    e_idx=self.config.dataset.e_idx,

@@ -77,20 +77,20 @@ Each benchmark must be cloned separately. Update the paths in `configs/dataset/e
 git clone https://github.com/djghosh13/geneval /path/to/geneval
 ```
 
+**GenEval++** ([Echo-4o dataset and evaluation scripts](https://github.com/yejy53/Echo-4o/tree/master/test_scripts))
+```bash
+git clone https://github.com/yejy53/Echo-4o /path/to/Echo-4o
+```
+
 **DPG-Bench** (part of the ELLA repository)
 ```bash
 git clone https://github.com/TencentQQGYLab/ELLA /path/to/ELLA
 ```
 
-**T2I-CompBench**
-```bash
-git clone https://github.com/Karine-Huang/T2I-CompBench /path/to/T2I-CompBench
-```
-
 Then edit `configs/dataset/eval.yaml`:
 ```yaml
 geneval: /path/to/geneval/prompts/evaluation_metadata.jsonl
-t2icompbench: /path/to/T2I-CompBench/examples/dataset
+geneval_pp: /path/to/Echo-4o/test_scripts/Geneval++.jsonl
 dpgbench: /path/to/ELLA/dpg_bench/prompts
 ```
 
@@ -111,14 +111,14 @@ Edit the variables at the top of each script (`CKPT_PATH`, `SAVE_PATH`, `EXP_NAM
 bash scripts/eval/run_geneval.sh
 ```
 
+**GenEval++**
+```bash
+bash scripts/eval/run_geneval_pp.sh
+```
+
 **DPG-Bench**
 ```bash
 bash scripts/eval/run_dpgbench.sh
-```
-
-**T2I-CompBench**
-```bash
-bash scripts/eval/run_t2icompbench.sh
 ```
 
 Generated images are saved to `<SAVE_PATH>/<EXP_NAME>/<task_name>/`.
@@ -130,6 +130,10 @@ Generated images are saved to `<SAVE_PATH>/<EXP_NAME>/<task_name>/`.
 | `use_self_correction` | Whether to run the self-correction loop after initial generation. If `True`, the model generates an image, reasons over it with VQA, produces corrective feedback, and edits the image — repeating up to `max_correction_steps` times. If `False`, only the initial generation (`gen/`) is produced. |
 | `max_correction_steps` | Maximum number of correction iterations. A value of `N` produces stages `gen/`, `correction_0/`, ..., `correction_{N-1}/`. Corrects early if VQA determines the image already satisfies the prompt. |
 
+
+## 4. Evaluation
+
+Evaluation code for **GenEval, GenEval++, and DPG-Bench** is included in [`evaluation/`](evaluation/README.md). See the [evaluation guide](evaluation/README.md) for upstream setup links, evaluation commands, and result locations.
 
 # 🤗 Acknowledgment
 

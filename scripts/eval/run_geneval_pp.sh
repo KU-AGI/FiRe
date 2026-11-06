@@ -1,17 +1,18 @@
 #!/bin/bash
+set -euo pipefail
 
 # ── User configuration ────────────────────────────────────────────────────
 CKPT_PATH="./checkpoints/FiRe-2500Step"
 SAVE_PATH="./outputs"
 EXP_NAME="fire"
 WORLD_SIZE=8
-BATCH_SIZE=8
+BATCH_SIZE=4
 # ─────────────────────────────────────────────────────────────────────────
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR/../inference"
+cd "$SCRIPT_DIR/../.."
 
-python t2icompbench.py \
+python inference/geneval_pp.py \
     --cfg_path ../configs \
     --overrides "ckpt_path=${CKPT_PATH}" \
     --overrides "save_path=${SAVE_PATH}" \

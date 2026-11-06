@@ -3,11 +3,9 @@ import os
 import argparse
 import json
 import datetime
-from glob import glob
 import yaml
 import sys
 import shutil
-
 sys.path.append("./src")
 
 from tqdm import tqdm
@@ -15,7 +13,7 @@ import numpy as np
 import PIL
 import PIL.Image
 import torch
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict
 
 from peft import LoraConfig, get_peft_model
 from pytorch_lightning import LightningModule, Trainer, seed_everything
@@ -25,7 +23,6 @@ import torch.distributed as dist
 from torchvision import transforms
 
 import pyrootutils
-
 pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True, cwd=True)
 
 from hydra import compose, initialize
@@ -65,16 +62,16 @@ class JanusTestWrapper(LightningModule):
         self.config = config
 
         task_cfg = config.eval
-        self.num_samples_per_prompt = task_cfg.get("num_samples_per_prompt", 4)
-        self.use_self_correction = task_cfg.get("use_self_correction", True)
-        self.temperature = task_cfg.get("temperature", 1.0)
-        self.cfg_weight = task_cfg.get("cfg_weight", 5.0)
+        self.num_samples_per_prompt = task_cfg.get('num_samples_per_prompt', 4)
+        self.use_self_correction = task_cfg.get('use_self_correction', True)
+        self.temperature = task_cfg.get('temperature', 1.0)
+        self.cfg_weight = task_cfg.get('cfg_weight', 5.0)
 
-        self.txt_top_k = task_cfg.get("txt_top_k", None)
-        self.txt_top_p = task_cfg.get("txt_top_p", None)
+        self.txt_top_k = task_cfg.get('txt_top_k', None)
+        self.txt_top_p = task_cfg.get('txt_top_p', None)
 
-        self.img_top_k = task_cfg.get("img_top_k", None)
-        self.img_top_p = task_cfg.get("img_top_p", None)
+        self.img_top_k = task_cfg.get('img_top_k', None)
+        self.img_top_p = task_cfg.get('img_top_p', None)
 
         self.image_token_num_per_image = 576
         self.img_size = 384
@@ -88,167 +85,79 @@ class JanusTestWrapper(LightningModule):
         self.eos = self.processor.tokenizer.eos_token
 
         self.formatting_evaluator = FormattingEvaluatorV2()
-        self.max_correction_steps = task_cfg.get("max_correction_steps", 1)
+
+        self.max_correction_steps = task_cfg.get('max_correction_steps', 1)
 
         self.gen_root = os.path.abspath(self.config.save_path)
         self.exp_root = os.path.dirname(self.gen_root)
 
-        # Cache to track idx ↔ category mapping.
-        self.idx_category_cache: Dict[int, str] = {}
-
-    # ------------------------------------------------------------------ #
-    # Category helpers
-    # ------------------------------------------------------------------ #
-    def _register_category(self, data_idx: int, category: Optional[str]):
-        if category:
-            self.idx_category_cache[data_idx] = category
-
-    def _infer_category_from_existing(self, stage: str, data_idx: int) -> Optional[str]:
-        """Infer category by scanning existing directory structure."""
-        stage_root = self._get_stage_root(stage)
-        if not os.path.isdir(stage_root):
-            return None
-
-        target_dirname = f"{data_idx:05d}"
-        for category in os.listdir(stage_root):
-            candidate = os.path.join(stage_root, category, target_dirname)
-            if os.path.isdir(candidate):
-                self.idx_category_cache[data_idx] = category
-                return category
-        return None
-
-    # ------------------------------------------------------------------ #
-    # Stage helpers
-    # ------------------------------------------------------------------ #
+    # --------------------------------------------------------------------- #
+    # Helper utilities
+    # --------------------------------------------------------------------- #
     def _get_stage_root(self, stage: str) -> str:
         if stage == "gen":
             return self.gen_root
         return os.path.join(self.exp_root, stage)
 
-    def _get_stage_outpath(
-        self,
-        data_idx: int,
-        stage: str,
-        category: Optional[str] = None,
-        create: bool = False,
-    ) -> Optional[str]:
-        """Return absolute path for stage/category/idx structure."""
-        stage_root = self._get_stage_root(stage)
-        resolved_category = (
-            category
-            or self.idx_category_cache.get(data_idx)
-            or self._infer_category_from_existing(stage, data_idx)
-        )
-
-        if resolved_category is None:
-            if create:
-                raise ValueError(
-                    f"Cannot find category info for idx {data_idx} (stage={stage})."
-                )
-            return None
-
-        category_root = os.path.join(stage_root, resolved_category)
+    def _get_stage_outpath(self, data_idx: int, stage: str, create: bool = False) -> str:
+        root = self._get_stage_root(stage)
         if create:
-            os.makedirs(category_root, exist_ok=True)
-
-        outpath = os.path.join(category_root, f"{data_idx:05d}")
+            os.makedirs(root, exist_ok=True)
+        outpath = os.path.join(root, f"{data_idx:05d}")
         if create:
             os.makedirs(outpath, exist_ok=True)
         return outpath
 
-    def _stage_has_outputs(
-        self,
-        data_idx: int,
-        stage: str,
-        category: Optional[str] = None,
-    ) -> bool:
-
-        stage_path = self._get_stage_outpath(
-            data_idx=data_idx, stage=stage, category=category, create=False
-        )
-        
-
-        if not stage_path or not os.path.isdir(stage_path):
+    def _stage_has_outputs(self, data_idx: int, stage: str) -> bool:
+        """Check that the stage directory has both samples/ and rationales.json."""
+        stage_path = self._get_stage_outpath(data_idx, stage, create=False)
+        if not os.path.isdir(stage_path):
             return False
-
         samples_dir = os.path.join(stage_path, "samples")
-        rationale_file = os.path.join(stage_path, RATIONAL_FILENAME)
-
-        if not os.path.isdir(samples_dir):
-            return False
-        
-        existing_images = glob(os.path.join(samples_dir, "*.png"))
-        if len(existing_images) < self.num_samples_per_prompt:
-            return False
-
+        rationale_file = os.path.join(stage_path, "rationales.json")
         if stage == "gen":
-            return True
-        
-        if not os.path.isfile(rationale_file):
-            return False
-
-        try:
-            with open(rationale_file, "r") as f:
-                rats = json.load(f)
-            
-            if not isinstance(rats, list) or len(rats) < self.num_samples_per_prompt:
-                return False
-                
-        except Exception:
-            return False
+            return os.path.isdir(samples_dir)
+        return os.path.isdir(samples_dir) and os.path.isfile(rationale_file)
 
 
-        return True
-
-    def _detect_resume_steps(self, batch: List[Dict]) -> Dict[int, int]:
+    def _detect_resume_steps(self, batch: List[Tuple[Dict, int]]) -> Dict[int, int]:
+        """
+        Compute the next correction step to run for each data_idx.
+        Returns 0 if correction_0 has not been run yet.
+        """
         resume_steps = {}
-        for sample in batch:
-            data_idx = sample["idx"]
-            category = sample.get("category")
-            self._register_category(data_idx, category)
-
+        for _, data_idx in batch:
             step = 0
-            while step < self.max_correction_steps:
-                source_stage = "gen" if step == 0 else f"correction_{step-1}"
-                if not self._stage_has_outputs(data_idx, source_stage, category):
-                    break
+            while step < self.max_correction_steps and self._stage_has_outputs(
+                data_idx, "gen" if step == 0 else f"correction_{step-1}"
+            ):
+                # Advance step if the next stage is already complete.
                 next_stage = f"correction_{step}"
-                if not self._stage_has_outputs(data_idx, next_stage, category):
+                if not self._stage_has_outputs(data_idx, next_stage):
                     break
                 step += 1
             resume_steps[data_idx] = step
         return resume_steps
 
-    def _mirror_stage_when_no_correction(
-        self,
-        data_idx: int,
-        source_stage: str,
-        current_step: int,
-        category: str,
-    ):
+    def _mirror_stage_when_no_correction(self, data_idx: int, source_stage: str, current_step: int):
         target_stage = f"correction_{current_step}"
-        if self._stage_has_outputs(data_idx, target_stage, category):
+        if self._stage_has_outputs(data_idx, target_stage):
             return
 
-        src_path = self._get_stage_outpath(
-            data_idx, source_stage, category=category, create=False
-        )
-        if not src_path:
+        src_path = self._get_stage_outpath(data_idx, source_stage, create=False)
+        if not os.path.isdir(src_path):
             return
 
-        dst_path = self._get_stage_outpath(
-            data_idx, target_stage, category=category, create=True
-        )
+        dst_path = self._get_stage_outpath(data_idx, target_stage, create=True)
 
+        # Copy all samples.
         src_samples = os.path.join(src_path, "samples")
         dst_samples = os.path.join(dst_path, "samples")
         os.makedirs(dst_samples, exist_ok=True)
         for fname in os.listdir(src_samples):
-            shutil.copyfile(
-                os.path.join(src_samples, fname),
-                os.path.join(dst_samples, fname),
-            )
+            shutil.copyfile(os.path.join(src_samples, fname), os.path.join(dst_samples, fname))
 
+        # Copy metadata and update iteration.
         src_metadata = os.path.join(src_path, METADATA_FILENAME)
         if os.path.isfile(src_metadata):
             with open(src_metadata, "r") as f:
@@ -257,6 +166,7 @@ class JanusTestWrapper(LightningModule):
             with open(os.path.join(dst_path, METADATA_FILENAME), "w") as f:
                 json.dump(meta, f)
 
+        # Copy rationale and mark needs_review as False.
         src_rationale = os.path.join(src_path, RATIONAL_FILENAME)
         if os.path.isfile(src_rationale):
             with open(src_rationale, "r") as f:
@@ -268,65 +178,16 @@ class JanusTestWrapper(LightningModule):
             with open(os.path.join(dst_path, RATIONAL_FILENAME), "w") as f:
                 json.dump(rats, f, indent=4)
 
-    def _save_batch_all_stages_to_final_outputs(self, batch: List[Dict]):
-        """Save all stages (gen ~ correction_n) for each sample in the batch to their respective folders."""
-        final_root = os.path.join(self.exp_root, "final_outputs")
-
-        for sample in batch:
-            data_idx = sample["idx"]
-            category = sample["category"]
-            prompt = sample["caption"]
-
-            # Build list of stages to save: gen + all possible correction stages.
-            stages_to_save = ["gen"] + [f"correction_{i}" for i in range(self.max_correction_steps)]
-
-            for stage in stages_to_save:
-                # 1. Check that outputs for this stage are complete.
-                if not self._stage_has_outputs(data_idx, stage, category):
-                    continue
-
-                # 2. Resolve source path and metadata.
-                stage_dir = self._get_stage_outpath(data_idx, stage, category=category, create=False)
-                if not stage_dir: continue
-
-                metadata_path = os.path.join(stage_dir, METADATA_FILENAME)
-                iteration = 0
-                if os.path.isfile(metadata_path):
-                    try:
-                        with open(metadata_path, "r") as f:
-                            meta = json.load(f)
-                        iteration = meta.get("iteration", (0 if stage == "gen" else int(stage.split("_")[-1])))
-                    except: pass
-
-                # 3. Create destination folder (e.g., final_outputs/correction_0/spatial).
-                target_category_dir = os.path.join(final_root, stage, category)
-                os.makedirs(target_category_dir, exist_ok=True)
-
-                # 4. Copy and rename images.
-                samples_dir = os.path.join(stage_dir, "samples")
-                if os.path.isdir(samples_dir):
-                    for img_name in sorted(os.listdir(samples_dir)):
-                        if not img_name.endswith(".png"): continue
-
-                        img_idx_str = img_name.split(".")[0][-2:]
-                        src_file = os.path.join(samples_dir, img_name)
-
-                        # Final filename: {prompt}_{iteration}_{img_idx}_{data_idx}.png
-                        dst_name = f"{prompt}_{iteration}_{img_idx_str}_{data_idx}.png"
-                        dst_file = os.path.join(target_category_dir, dst_name)
-
-                        shutil.copyfile(src_file, dst_file)
-
-    # ------------------------------------------------------------------ #
+    # --------------------------------------------------------------------- #
     # Lightning hooks
-    # ------------------------------------------------------------------ #
+    # --------------------------------------------------------------------- #
     def on_test_epoch_start(self):
         self.model.eval()
 
     @torch.inference_mode()
     def test_step(self, batch, batch_idx):
         prepared_data = self._prepare_batch_data(batch)
-        if prepared_data["prompts"]:
+        if len(prepared_data['prompts']) != 0:
             self._run_generation_loop(prepared_data)
 
         resume_steps = self._detect_resume_steps(batch)
@@ -338,110 +199,72 @@ class JanusTestWrapper(LightningModule):
                     batch, current_step, resume_steps
                 )
                 if len(correction_data["prompts"]) > 0:
-                    regen_list = self._run_self_correction_loop(
-                        correction_data, current_step
-                    )
+                    regen_list = self._run_self_correction_loop(correction_data, current_step)
 
                     if len(regen_list) > 0:
                         self._run_feedback_img_generation_loop(regen_list)
-        
-        self._save_batch_all_stages_to_final_outputs(batch)
 
-    def on_test_epoch_end(self, outputs=None):
+    # --------------------------------------------------------------------- #
+    # Stage preparation
+    # --------------------------------------------------------------------- #
+    def _prepare_batch_data(self, batch: List[Tuple[Dict, int]]) -> Dict[str, List]:
+        prompts, data_indices, sample_paths, output_paths = [], [], [], []
 
-        rank = dist.get_rank()
-        print("--------------------------------------------------")
-        print(f"RANK: {rank} DONE!")
-        print("--------------------------------------------------")
+        for sample, data_idx in batch:
+            outpath = self._get_stage_outpath(data_idx, "gen", create=True)
+            sample_path = os.path.join(outpath, "samples")
 
-    # ------------------------------------------------------------------ #
-    # Preparation
-    # ------------------------------------------------------------------ #
-    def _prepare_batch_data(self, batch: List[Dict]) -> Dict[str, List]:
-        prompts, data_indices, sample_dirs = [], [], []
-
-        for sample in batch:
-            data_idx = sample["idx"]
-            category = sample["category"]
-            self._register_category(data_idx, category)
-
-            outpath = self._get_stage_outpath(
-                data_idx, "gen", category=category, create=True
-            )
-            samples_dir = os.path.join(outpath, "samples")
-            os.makedirs(samples_dir, exist_ok=True)
-
-            existing_files = sorted(glob(os.path.join(samples_dir, "*.png")))
-            if len(existing_files) >= self.num_samples_per_prompt:
+            if os.path.exists(sample_path) and len(os.listdir(sample_path)) >= self.num_samples_per_prompt:
                 continue
 
-            metadata = {
-                "category": sample["category"],
-                "prompt": sample["caption"],
-                "iteration": 0,
-                "idx": data_idx,
-                "num_samples": self.num_samples_per_prompt,
-            }
-            with open(os.path.join(outpath, METADATA_FILENAME), "w") as f:
-                json.dump(metadata, f)
+            os.makedirs(sample_path, exist_ok=True)
 
-            prompts.append(sample["caption"])
+            with open(os.path.join(outpath, METADATA_FILENAME), "w") as f:
+                json.dump(sample, f)
+
+            prompts.append(sample['prompt'])
             data_indices.append(data_idx)
-            sample_dirs.append(samples_dir)
+            sample_paths.append(sample_path)
+            output_paths.append(outpath)
 
         return {
             "prompts": prompts,
             "data_indices": data_indices,
-            "sample_dirs": sample_dirs,
+            "sample_paths": sample_paths,
+            "output_paths": output_paths
         }
 
     def _prepare_correction_batch_data(
         self,
-        batch: List[Dict],
+        batch: List[Tuple[Dict, int]],
         current_step: int,
         resume_steps: Dict[int, int],
     ) -> Dict[str, List]:
         prompts, data_indices, stage_paths = [], [], []
-        categories = []
-        image_tensors, group_sizes, selected_indices, prev_rationales = (
-            [],
-            [],
-            [],
-            [],
-        )
+        image_tensors, group_sizes, selected_indices, prev_rationales = [], [], [], []
 
         source_stage = "gen" if current_step == 0 else f"correction_{current_step-1}"
+
         evaluate_all = current_step == 0 and all(
-            resume_steps.get(sample["idx"], 0) == 0 for sample in batch
+            resume_steps.get(data_idx, 0) == 0 for _, data_idx in batch
         )
 
-        for sample in batch:
-            data_idx = sample["idx"]
-            category = sample["category"]
-            self._register_category(data_idx, category)
+        for sample, data_idx in batch:
 
             sample_resume_step = resume_steps.get(data_idx, 0)
             if current_step < sample_resume_step:
+                # This sample has already completed up to current_step.
                 continue
 
-            stage_outpath = self._get_stage_outpath(
-                data_idx, source_stage, category=category, create=False
-            )
-            if not stage_outpath or not os.path.isdir(stage_outpath):
+            stage_outpath = self._get_stage_outpath(data_idx, source_stage, create=False)
+            if not os.path.isdir(stage_outpath):
                 continue
 
             samples_dir = os.path.join(stage_outpath, "samples")
             if not os.path.isdir(samples_dir):
                 continue
 
-            metadata_path = os.path.join(stage_outpath, METADATA_FILENAME)
-            if not os.path.isfile(metadata_path):
-                continue
-
-            with open(metadata_path, "r") as f:
-                metadata = json.load(f)
-
-            rationales_path = os.path.join(stage_outpath, RATIONAL_FILENAME)
+            rationales_path = os.path.join(stage_outpath, "rationales.json")
             if os.path.exists(rationales_path):
                 with open(rationales_path, "r") as f:
                     prev_rat = json.load(f)
@@ -449,16 +272,12 @@ class JanusTestWrapper(LightningModule):
                 prev_rat = [None] * self.num_samples_per_prompt
 
             if len(prev_rat) < self.num_samples_per_prompt:
-                prev_rat.extend(
-                    [None] * (self.num_samples_per_prompt - len(prev_rat))
-                )
+                prev_rat.extend([None] * (self.num_samples_per_prompt - len(prev_rat)))
 
             indices_to_eval = []
             for img_idx in range(self.num_samples_per_prompt):
                 rationale = prev_rat[img_idx]
-                needs_review = True if evaluate_all else (
-                    rationale is None or rationale.get("needs_review", True)
-                )
+                needs_review = True if evaluate_all else (rationale is None or rationale.get("needs_review", True))
                 if needs_review:
                     img_path = os.path.join(samples_dir, f"{img_idx:05d}.png")
                     if os.path.exists(img_path):
@@ -469,7 +288,6 @@ class JanusTestWrapper(LightningModule):
                     data_idx=data_idx,
                     source_stage=source_stage,
                     current_step=current_step,
-                    category=category,
                 )
                 continue
 
@@ -480,11 +298,7 @@ class JanusTestWrapper(LightningModule):
                     pil_images.append(img.convert("RGB"))
 
             processed = self.processor.image_processor(pil_images)
-            pixel_values = (
-                processed["pixel_values"]
-                if isinstance(processed, dict)
-                else processed.pixel_values
-            )
+            pixel_values = processed["pixel_values"] if isinstance(processed, dict) else processed.pixel_values
             if isinstance(pixel_values, torch.Tensor):
                 batch_pixels = pixel_values
             else:
@@ -493,10 +307,9 @@ class JanusTestWrapper(LightningModule):
             for tensor in batch_pixels:
                 image_tensors.append(tensor)
 
-            prompts.append(metadata["prompt"])
+            prompts.append(sample['prompt'])
             data_indices.append(data_idx)
             stage_paths.append(stage_outpath)
-            categories.append(category)
             group_sizes.append(len(indices_to_eval))
             selected_indices.append(indices_to_eval)
             prev_rationales.append(prev_rat)
@@ -505,24 +318,20 @@ class JanusTestWrapper(LightningModule):
             "prompts": prompts,
             "data_indices": data_indices,
             "stage_paths": stage_paths,
-            "categories": categories,
             "image_tensors": image_tensors,
             "group_sizes": group_sizes,
             "selected_indices": selected_indices,
-            "prev_rationales": prev_rationales,
+            "prev_rationales": prev_rationales
         }
 
-    # ------------------------------------------------------------------ #
-    # Embedding builders
-    # ------------------------------------------------------------------ #
-    def prepare_input_embeds(self, prompt_list: List[str], system_prompt: str = ""):
+    # --------------------------------------------------------------------- #
+    # Embed builders
+    # --------------------------------------------------------------------- #
+    def prepare_input_embeds(self, prompt_list: List[str], system_prompt: str = "") -> Tuple[torch.Tensor, torch.Tensor]:
         batch_size = len(prompt_list)
         input_ids_list = []
         for prompt in prompt_list:
-            conversation = [
-                {"role": "<|User|>", "content": prompt},
-                {"role": "<|Assistant|>", "content": ""},
-            ]
+            conversation = [{"role": "<|User|>", "content": prompt}, {"role": "<|Assistant|>", "content": ""}]
             sft_format = self.processor.apply_sft_template_for_multi_turn_prompts(
                 conversations=conversation,
                 sft_format=self.processor.sft_format,
@@ -535,15 +344,8 @@ class JanusTestWrapper(LightningModule):
 
         max_len = max(len(ids) for ids in input_ids_list)
 
-        tokens = torch.full(
-            (batch_size * 2, max_len),
-            self.processor.pad_id,
-            dtype=torch.long,
-            device=self.device,
-        )
-        attention_mask = torch.zeros(
-            (batch_size * 2, max_len), dtype=torch.long, device=self.device
-        )
+        tokens = torch.full((batch_size*2, max_len), self.processor.pad_id, dtype=torch.long, device=self.device)
+        attention_mask = torch.zeros((batch_size*2, max_len), dtype=torch.long, device=self.device)
 
         for i, ids in enumerate(input_ids_list):
             pad_len = max_len - len(ids)
@@ -551,7 +353,7 @@ class JanusTestWrapper(LightningModule):
             attention_mask[i * 2, pad_len:] = 1
 
             tokens[i * 2 + 1, pad_len:] = ids
-            tokens[i * 2 + 1, pad_len + 1 : -1] = self.processor.pad_id
+            tokens[i * 2 + 1, pad_len+1:-1] = self.processor.pad_id
             attention_mask[i * 2 + 1, pad_len:] = 1
 
         input_embeds = self.model.language_model.get_input_embeddings()(tokens)
@@ -561,38 +363,30 @@ class JanusTestWrapper(LightningModule):
         self,
         prompt_list: List[str],
         image_tensors: List[torch.Tensor],
-        group_sizes: List[int],
-    ):
-        batch_size = len(prompt_list)
+        group_sizes: List[int]
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
 
+        batch_size = len(prompt_list)
         input_ids_list = []
+
         for prompt in prompt_list:
-            conversation = [
-                {"role": "<|User|>", "content": prompt},
-                {"role": "<|Assistant|>", "content": ""},
-            ]
+            conversation = [{"role": "<|User|>", "content": prompt}, {"role": "<|Assistant|>", "content": ""}]
             sft_format = self.processor.apply_sft_template_for_multi_turn_prompts(
                 conversations=conversation,
                 sft_format=self.processor.sft_format,
                 system_prompt="",
             )
 
-            full_prompt = (
-                sft_format
-                + self.processor.image_start_tag
-                + f"{self.image_end_tag}\nFirst, summarize the input prompt by keeping only explicitly stated visual facts\n"
-            )
+            full_prompt = sft_format + self.processor.image_start_tag
+            full_prompt += f"{self.image_end_tag}\nFirst, summarize the input prompt by keeping only explicitly stated visual facts\n"
+
             input_ids = self.processor.tokenizer.encode(full_prompt)
             input_ids_list.append(torch.LongTensor(input_ids))
 
         pad_id = self.processor.tokenizer.encode(self.pad, add_special_tokens=False)[0]
-        boi_token_id = self.processor.tokenizer.encode(
-            self.image_start_tag, add_special_tokens=False
-        )[0]
+        boi_token_id = self.processor.tokenizer.encode(self.image_start_tag, add_special_tokens=False)[0]
 
-        max_len = max(
-            len(ids) + self.image_token_num_per_image for ids in input_ids_list
-        )
+        max_len = max(len(ids) + self.image_token_num_per_image for ids in input_ids_list)
 
         images = torch.stack(image_tensors).to(self.device)
         image_embeds = self.model.aligner(self.model.vision_model(images))
@@ -600,28 +394,24 @@ class JanusTestWrapper(LightningModule):
         pad_embeds = self.model.language_model.get_input_embeddings()(torch.LongTensor([pad_id]).to(self.device))
 
         hidden_dim = image_embeds.shape[-1]
+
         total_rows = sum(group_sizes)
         token_embeds = pad_embeds.repeat(total_rows, max_len, 1).to(dtype=image_embeds.dtype, device=self.device)
-        attention_mask = torch.zeros(
-            (total_rows, max_len), dtype=torch.long, device=self.device
-        )
+        attention_mask = torch.zeros((total_rows, max_len), dtype=torch.long, device=self.device)
 
         pointer = 0
+
         for i in range(batch_size):
             input_ids = input_ids_list[i]
             split_point_tensor = (input_ids == boi_token_id).nonzero(as_tuple=True)[0]
             split_point = split_point_tensor[-1]
-            text_embeds = self.model.language_model.get_input_embeddings()(
-                input_ids.to(self.device)
-            )
+            text_embeds = self.model.language_model.get_input_embeddings()(input_ids.to(self.device))
 
-            left_embeds = text_embeds[: split_point + 1].clone()
-            right_embeds = text_embeds[split_point + 1 :].clone()
+            left_embeds = text_embeds[:split_point+1].clone()
+            right_embeds = text_embeds[split_point + 1:].clone()
 
             for j in range(group_sizes[i]):
-                combined_embeds = torch.cat(
-                    [left_embeds, image_embeds[pointer + j], right_embeds]
-                )
+                combined_embeds = torch.cat([left_embeds, image_embeds[pointer + j], right_embeds])
                 seq_len = len(combined_embeds)
                 pad_len = max_len - seq_len
 
@@ -632,14 +422,16 @@ class JanusTestWrapper(LightningModule):
 
         return token_embeds, attention_mask
 
-    def prepare_feedback_img_input_embeds(self, prompts: List[str], feedbacks: List[str], image_tensors):
+    def prepare_feedback_img_input_embeds(self, prompts: List[str], feedbacks: List[str], image_tensors: List[torch.Tensor]):
         batch_size = len(feedbacks)
         system_prompt = EDIT_TEMPLATE.format(image_start_tag=self.image_start_tag, image_end_tag=self.image_end_tag)
-        
+
         input_ids_list = []
+
         assert len(prompts) == len(feedbacks)
 
         for prompt, feedback in zip(prompts, feedbacks):
+
             conversation = [
                 {
                     "role": "<|User|>",
@@ -654,6 +446,7 @@ class JanusTestWrapper(LightningModule):
                 },
                 {"role": "<|Assistant|>", "content": ""},
             ]
+
             sft_format = self.processor.apply_sft_template_for_multi_turn_prompts(
                 conversations=conversation,
                 sft_format=self.processor.sft_format,
@@ -664,41 +457,31 @@ class JanusTestWrapper(LightningModule):
             input_ids = self.processor.tokenizer.encode(full_prompt)
             input_ids_list.append(torch.LongTensor(input_ids))
 
-        boi_token_id = self.processor.tokenizer.encode(
-            self.image_start_tag, add_special_tokens=False
-        )[0]
-        eoi_token_id = self.processor.tokenizer.encode(
-            self.image_end_tag, add_special_tokens=False
-        )[0]
+        boi_token_id = self.processor.tokenizer.encode(self.image_start_tag, add_special_tokens=False)[0]
+        eoi_token_id = self.processor.tokenizer.encode(self.image_end_tag, add_special_tokens=False)[0]
         image_token_id = self.processor.tokenizer.encode(self.image_tag, add_special_tokens=False)[0]
-        assistant_id = self.processor.tokenizer.encode(
-            "<|Assistant|>", add_special_tokens=False
-        )[0]
-        pad_id = self.processor.tokenizer.encode(
-            self.pad, add_special_tokens=False
-        )[0]
+        assistant_id = self.processor.tokenizer.encode("<|Assistant|>", add_special_tokens=False)[0]
+        pad_id = self.processor.tokenizer.encode(self.pad, add_special_tokens=False)[0]
 
-        max_len = max(
-            len(ids) + self.image_token_num_per_image for ids in input_ids_list
-        )
+        max_len = max(len(ids) + self.image_token_num_per_image for ids in input_ids_list)
 
         images = torch.stack(image_tensors).to(self.device)
+
         with torch.no_grad():
             _, _, all_image_ids = self.model.gen_vision_model.encode(images)
             image_ids = all_image_ids[2]
             image_ids = image_ids.view(batch_size, -1)
 
         image_embeds = self.model.gen_aligner(self.model.gen_embed(image_ids))
+
         pad_embeds = self.model.language_model.get_input_embeddings()(torch.LongTensor([pad_id]).to(self.device))
 
         hidden_dim = image_embeds.shape[-1]
         token_embeds = pad_embeds.repeat(batch_size * 2, max_len, 1).to(dtype=image_embeds.dtype, device=self.device)
-        attention_mask = torch.zeros(
-            (batch_size * 2, max_len), dtype=torch.long, device=self.device
-        )
+        attention_mask = torch.zeros((batch_size * 2, max_len), dtype=torch.long, device=self.device)
 
         for i in range(batch_size*2):
-                  
+
             input_ids = input_ids_list[i//2]
 
             if i % 2 == 0:
@@ -731,28 +514,27 @@ class JanusTestWrapper(LightningModule):
                 combined_embeds = torch.cat([left_embeds, image_embeds[i//2], middle_embeds, right_pad_embeds, end_embeds], dim=0)
 
             seq_len = len(combined_embeds)
-            pad_len = max_len - seq_len        
+            pad_len = max_len - seq_len
             token_embeds[i, pad_len:] = combined_embeds
             attention_mask[i, pad_len:] = 1
 
-        return token_embeds, attention_mask   
-    # ------------------------------------------------------------------ #
-    # Generation and correction loops
-    # ------------------------------------------------------------------ #
+        return token_embeds, attention_mask
+
+    # --------------------------------------------------------------------- #
+    # Generation loops
+    # --------------------------------------------------------------------- #
     def _run_generation_loop(self, prepared_data: Dict[str, List]):
         prompts = prepared_data["prompts"]
-        sample_dirs = prepared_data["sample_dirs"]
+        sample_paths = prepared_data["sample_paths"]
 
         inputs_embeds, attention_masks = self.prepare_input_embeds(prompts)
 
-        for iteration in range(self.num_samples_per_prompt):
-            seed_everything(iteration + self.config.seed, workers=True)
+        for i in range(self.num_samples_per_prompt):
+            seed_everything(i + self.config.seed, workers=True)
             images = self._run_simple_generation(inputs_embeds, attention_masks)
-            self._save_images(images, sample_dirs, iteration)
+            self._save_images(images, sample_paths, i)
 
-    def _run_simple_generation(
-        self, inputs_embeds: torch.Tensor, attention_masks: torch.Tensor
-    ):
+    def _run_simple_generation(self, inputs_embeds: torch.Tensor, attention_masks: torch.Tensor) -> List[np.ndarray]:
         generated_tokens = self.generate_img(inputs_embeds, attention_masks)
         images = self.decode_tokens(generated_tokens)
         return images
@@ -761,7 +543,6 @@ class JanusTestWrapper(LightningModule):
         prompts = prepared_data["prompts"]
         data_indices = prepared_data["data_indices"]
         stage_paths = prepared_data["stage_paths"]
-        categories = prepared_data["categories"]
         image_tensors = prepared_data["image_tensors"]
         group_sizes = prepared_data["group_sizes"]
         selected_indices = prepared_data["selected_indices"]
@@ -786,12 +567,7 @@ class JanusTestWrapper(LightningModule):
                 continue
 
             source_path = stage_paths[i]
-            target_path = self._get_stage_outpath(
-                data_indices[i],
-                stage_name,
-                category=categories[i],
-                create=True,
-            )
+            target_path = self._get_stage_outpath(data_indices[i], stage_name, create=True)
             samples_dir = os.path.join(target_path, "samples")
             os.makedirs(samples_dir, exist_ok=True)
 
@@ -840,16 +616,10 @@ class JanusTestWrapper(LightningModule):
 
                 answers = rationale.get("pred_only_answer_list", [])
                 feedback = rationale.get("pred_feedback", "")
-                is_all_yes = bool(answers) and all(
-                    "yes" in ans.lower() for ans in answers
-                )
-                no_feedback_needed = (
-                    "no need to generate feedback" in feedback.lower()
-                )
+                is_all_yes = bool(answers) and all("yes" in ans.lower() for ans in answers)
+                no_feedback_needed = "no need to generate feedback" in feedback.lower()
                 needs_review_flag = rationale.get("needs_review", True)
-                needs_review = needs_review_flag and not (
-                    is_all_yes or no_feedback_needed
-                )
+                needs_review = needs_review_flag and not (is_all_yes or no_feedback_needed)
 
                 rationale.update(
                     {
@@ -882,25 +652,25 @@ class JanusTestWrapper(LightningModule):
 
     def _run_feedback_generation(self, token_embeds: torch.Tensor, attention_masks: torch.Tensor) -> List[dict]:
         generated_texts = self.generate_text(token_embeds, attention_masks)
-        
+
         res = []
         for text in generated_texts:
             stripped = text.strip()
 
             parsed_parts = self.formatting_evaluator._split_text_into_parts(stripped)
-            
+
             if all(p is not None for p in parsed_parts) and len(parsed_parts) == 4:
                 p1, p2, p3, p4 = parsed_parts
-                
+
                 pred_tup_parsed = self.formatting_evaluator._parse_part1(p2)
-                
+
                 pred_answer_paragraphs = self.formatting_evaluator._extract_answer_paragraphs(p3)
                 pred_only_answer_list = [
                     self.formatting_evaluator._get_answer_from_paragraph(ans).strip()
                     for ans in pred_answer_paragraphs
                     if ans.strip()
                 ]
-                
+
                 res.append({
                     "original_answer": stripped,
                     "pred_summarize": p1,
@@ -924,7 +694,7 @@ class JanusTestWrapper(LightningModule):
                     "parse_error": True,
                     "error_msg": "FormattingEvaluator parsing failed: expected 4 parts but failed to split."
                 })
-        
+
         return res
 
     def _run_feedback_img_generation_loop(self, regen_list: List[Dict]) -> List[Dict]:
@@ -952,20 +722,19 @@ class JanusTestWrapper(LightningModule):
     # --------------------------------------------------------------------- #
     # Core model I/O helpers
     # --------------------------------------------------------------------- #
-    @torch.inference_mode()
     def generate_text(self, inputs_embeds: torch.Tensor, attention_masks: torch.Tensor) -> torch.Tensor:
         outputs = self.model.language_model.generate(
             inputs_embeds=inputs_embeds,
             attention_mask=attention_masks,
             max_new_tokens=self.max_reflect_len,
             use_cache=True,
-            do_sample=False,
+            do_sample=True,
             pad_token_id=self.processor.tokenizer.eos_token_id,
             eos_token_id=self.processor.tokenizer.eos_token_id,
             bos_token_id=self.processor.tokenizer.bos_token_id,
-            # top_k=self.txt_top_k,
-            # top_p=self.txt_top_p,
-            # temperature=self.temperature,
+            top_k=self.txt_top_k,
+            top_p=self.txt_top_p,
+            temperature=self.temperature,
         )
 
         answer = self.processor.tokenizer.batch_decode(outputs, skip_special_tokens=True)
@@ -981,7 +750,7 @@ class JanusTestWrapper(LightningModule):
         position_ids = attention_mask.long().cumsum(1) - 1
         position_ids = position_ids.masked_fill(attention_mask == 0, 0)
         past_len = attention_mask.sum(dim=1, keepdim=True).long()
-        
+
         past_key_values = None
         for i in range(self.image_token_num_per_image):
             outputs = self.model.language_model.model(
@@ -996,10 +765,10 @@ class JanusTestWrapper(LightningModule):
             past_key_values = outputs.past_key_values
 
             logits = self.model.gen_head(hidden_states[:, -1, :])
-            
+
             logit_cond = logits[0::2, :]
             logit_uncond = logits[1::2, :]
-            
+
             logits = logit_uncond + self.cfg_weight * (logit_cond-logit_uncond)
             next_token = self._sample_from_logits(logits, is_text=False)
             generated_tokens[:, i] = next_token.squeeze(-1)
@@ -1035,24 +804,23 @@ class JanusTestWrapper(LightningModule):
         if top_k:
             v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
             logits[logits < v[:, [-1]]] = float("-inf")
-        
+
         probs = torch.softmax(logits / self.temperature, dim=-1)
-        
+
         if top_p:
             probs_sort, probs_idx = torch.sort(probs, dim=-1, descending=True)
             probs_sum = torch.cumsum(probs_sort, dim=-1)
-            mask = probs_sum - probs_sort > top_p 
+            mask = probs_sum - probs_sort > top_p
             probs_sort[mask] = 0.0
             probs_sort.div_(probs_sort.sum(dim=-1, keepdim=True))
             next_token = torch.multinomial(probs_sort, num_samples=1)
             next_token = torch.gather(probs_idx, -1, next_token)
         else:
             next_token = torch.multinomial(probs, num_samples=1)
-            
-        return next_token     
+
+        return next_token
 
     def _save_images(self, images: List[np.ndarray], sample_paths: List[str], iteration: int):
-        
         for i, image in enumerate(images):
             fpath = os.path.join(sample_paths[i], f"{iteration:05d}.png")
             if isinstance(image, np.ndarray):
@@ -1062,62 +830,59 @@ class JanusTestWrapper(LightningModule):
             else:
                 raise ValueError("Unsupported image type: ", {type(image)})
 
-
+    # --------------------------------------------------------------------- #
+    # Trainer / Config boilerplate
+    # --------------------------------------------------------------------- #
 def get_trainer(config, device):
     trainer = Trainer(
         accelerator=device,
         devices=config.world_size,
         strategy="ddp",
-        max_epochs=1,      # config.experiment.epoch,
-        precision='bf16',  # config.base.precision,
+        max_epochs=1,
+        precision='bf16',
         callbacks=[ModelSummary(max_depth=2)],
     )
     return trainer
 
 def load_config(cfg_path, overrides):
-    
-    with initialize(version_base=None, config_path=cfg_path, job_name="eval_sft_geneval"):
-        cfg = compose(config_name="t2icompbench", overrides=overrides)
+
+    with initialize(version_base=None, config_path=cfg_path, job_name="eval_sft_geneval_pp"):
+        cfg = compose(config_name="geneval_pp", overrides=overrides)
     return cfg
 
 def main(args):
-    
+
     config=load_config(cfg_path=args.cfg_path, overrides=args.overrides)
-    
-    
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    if config.t2icompbench_path is not None:
-        config.save_path = os.path.join(config.t2icompbench_path, "gen")
+    if config.geneval_pp_path is not None:
+        config.save_path = os.path.join(config.geneval_pp_path, "gen")
+
     elif config.save_path is not None and config.exp_name is not None:
         config.save_path = os.path.join(config.save_path, config.exp_name, config.task_name, "gen")
         os.makedirs(config.save_path, exist_ok=True)
     else:
         raise ValueError("save_path or exp_name not provided.")
-        
 
-      
-
-    if config.type == "sft" and os.path.isdir(config.ckpt_path):
+    if config.type in ["sft", "rl"] and config.ckpt_path and os.path.isdir(config.ckpt_path):
         print(f"Loading finetuned weights from: {config.ckpt_path}")
         config.model.model_path = config.ckpt_path
-        model, processor = get_model(config)  
+    model, processor = get_model(config)
 
-    model = JanusTestWrapper(config=config, 
+    model = JanusTestWrapper(config=config,
                         model=model,
-                        processor=processor, 
-                        ) 
+                        processor=processor,
+                        )
 
     model.setup("test")
-    
-    # Define Trainer
+
     trainer = get_trainer(config, device)
     eval_datamodule = EvalDataModule(config)
-    
-    # Start evaluation
+
     start_time = datetime.datetime.now()
     trainer.test(model, datamodule=eval_datamodule)
-    
+
     end_time = datetime.datetime.now()
 
     elapsed_time = end_time - start_time
@@ -1129,7 +894,7 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--cfg_path", type=str, default="../../configs")
+    parser.add_argument("--cfg_path", type=str, default="../configs")
     parser.add_argument("--overrides", action="append", default=[])
     parser.add_argument("--s_idx", type=int, default=None)
     parser.add_argument("--e_idx", type=int, default=None)
